@@ -1,0 +1,120 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TargetType {
+  foo
+  bar
+}
+
+// #region Json
+
+model JsonItem {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  json      Json
+
+  // https://www.prisma.io/docs/orm/prisma-schema/data-model/indexes#generalized-inverted-index-gin
+  // Could use either JsonbOps or JsonbPathOps. Neither will help us though due to how Prisma generates the SQL.
+  @@index([json(ops: JsonbPathOps)], type: Gin)
+}
+
+// #endregion
+
+// #region Nullable
+
+model NullableItem {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  nullableTargetId String
+  nullableTarget   NullableTarget @relation(fields: [nullableTargetId], references: [id])
+
+  @@index([nullableTargetId])
+}
+
+model NullableTarget {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  type TargetType
+
+  /// Required if type is FOO
+  foo String?
+
+  /// Required if type is BAR
+  bar String?
+
+  nullableItems NullableItem[]
+
+  @@index([type])
+  @@index([foo], type: Hash)
+  @@index([bar], type: Hash)
+}
+
+// #endregion
+
+// #region Inheritance
+
+model InheritanceItem {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inheritanceTargetId String
+  inheritanceTarget   InheritanceTarget @relation(fields: [inheritanceTargetId], references: [id])
+
+  @@index([inheritanceTargetId])
+}
+
+model InheritanceTarget {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  type TargetType
+
+  /// Required if type is FOO
+  fooInheritanceTarget FooInheritanceTarget?
+
+  /// Required if type is BAR
+  barInheritanceTarget BarInheritanceTarget?
+
+  inheritanceItems InheritanceItem[]
+
+  @@index([type])
+}
+
+model FooInheritanceTarget {
+  inheritanceTargetId String            @unique
+  inheritanceTarget   InheritanceTarget @relation(fields: [inheritanceTargetId], references: [id])
+
+  foo String
+
+  @@index([foo], type: Hash)
+}
+
+model BarInheritanceTarget {
+  inheritanceTargetId String            @unique
+  inheritanceTarget   InheritanceTarget @relation(fields: [inheritanceTargetId], references: [id])
+
+  bar String
+
+  @@index([bar], type: Hash)
+}
+
+// #endregion
